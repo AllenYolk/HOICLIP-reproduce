@@ -1,0 +1,41 @@
+ulimit -n 4096
+set -x
+EXP_DIR=exps/vcoco/hoiclip
+
+swapon --show
+free -h
+export NCCL_P2P_LEVEL=NVL
+export OMP_NUM_THREADS=8
+python -m torch.distributed.launch \
+        --nproc_per_node=2 \
+        --master_port $[29403 + i] \
+        --use_env \
+        main.py \
+        --output_dir ${EXP_DIR} \
+        --dataset_file vcoco \
+        --hoi_path data/v-coco \
+        --num_obj_classes 81 \
+        --num_verb_classes 29 \
+        --backbone resnet50 \
+        --num_queries 64 \
+        --dec_layers 3 \
+        --epochs 90 \
+        --lr_drop 60 \
+        --use_nms_filter \
+        --fix_clip \
+        --batch_size 2 \
+        --pretrained params/detr-r50-pre-2branch-hico.pth \
+        --with_clip_label \
+        --with_obj_clip_label \
+        --gradient_accumulation_steps 1 \
+        --num_workers 8 \
+        --opt_sched "multiStep" \
+        --dataset_root GEN \
+        --model_name HOICLIP \
+        --zero_shot_type default \
+        --resume ${EXP_DIR}/checkpoint_last.pth \
+        --verb_pth ./tmp/vcoco_verb.pth \
+        --verb_weight 0.1 \
+        --training_free_enhancement_path \
+        ./training_free_ehnahcement/
+sleep 120
