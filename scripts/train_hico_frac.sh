@@ -1,6 +1,6 @@
 ulimit -n 4096
 set -x
-EXP_DIR=exps/hico/hoiclip
+EXP_DIR=exps/hico_5%/hoiclip
 
 swapon --show
 free -h
