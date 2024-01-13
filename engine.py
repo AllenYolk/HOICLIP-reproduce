@@ -19,6 +19,51 @@ import datetime
 import time
 
 
+def get_verb_representation_original(hoi_feature, obj_feature, verb_feature, args):
+    """HOICLIP's verb representation generation process.
+    verb = hoi - obj
+
+    Argument `verb_feature` is useless, just for compatibility. 
+    """
+    from datasets.static_hico import HOI_IDX_TO_ACT_IDX, HOI_IDX_TO_OBJ_IDX
+    hoi_feature = hoi_feature / hoi_feature.norm(dim=1, keepdim=True)
+    obj_feature = obj_feature / obj_feature.norm(dim=1, keepdim=True)
+
+    y_verb = [HOI_IDX_TO_ACT_IDX[i] for i in range(600)]
+    y_obj = [HOI_IDX_TO_OBJ_IDX[i] for i in range(600)]
+
+    # composite image feature verb + text feature object
+    obj_human = []
+    for i in range(600): # each HOI triplet
+        obj_human.append(obj_feature[y_obj[i]])
+    obj_human = torch.stack(obj_human) # each HOI's object feature
+    verb_human = hoi_feature - obj_human # each HOI: HOI feature - object feature
+
+    verb_feature = torch.zeros(117, 512) # each verb
+    for idx, v in zip(y_verb, verb_human):
+        verb_feature[idx] += v # sum of all (HOI feature - object feature)
+
+    for i in range(117): # each verb
+        verb_feature[i] /= y_verb.count(i) # average on each verb
+
+    v_feature = verb_feature / verb_feature.norm(dim=-1, keepdim=True) # normalize
+    torch.save(v_feature, f'./verb_{args.dataset_file}.pth')
+    exit()
+
+
+def get_verb_representation_ours(hoi_feature, obj_feature, verb_feature, args):
+    """Ours verb representation generation process.
+    verb = (hoi - obj + hoi - human) / 2
+
+    Arguments `hoi_feature` and `obj_feature` are useless, just for compatibility.
+    See the `GEN_VLKT` class in models/generate_image_feature/generate_verb.py 
+    for more details.
+    """
+    v_feature = verb_feature / verb_feature.norm(dim=-1, keepdim=True) # normalize
+    torch.save(v_feature, f'./verb_{args.dataset_file}.pth')
+    exit()
+
+
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, max_norm: float = 0, lr_scheduler=None,
@@ -129,30 +174,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
     # trick for generate verb
     if no_training:
-        from datasets.static_hico import HOI_IDX_TO_ACT_IDX, HOI_IDX_TO_OBJ_IDX
-        hoi_feature = hoi_feature / hoi_feature.norm(dim=1, keepdim=True)
-        obj_feature = obj_feature / obj_feature.norm(dim=1, keepdim=True)
-
-        y_verb = [HOI_IDX_TO_ACT_IDX[i] for i in range(600)]
-        y_obj = [HOI_IDX_TO_OBJ_IDX[i] for i in range(600)]
-
-        # composite image feature verb + text feature object
-        obj_human = []
-        for i in range(600):
-            obj_human.append(obj_feature[y_obj[i]])
-        obj_human = torch.stack(obj_human)
-        verb_human = hoi_feature - obj_human
-
-        verb_feature = torch.zeros(117, 512)
-        for idx, v in zip(y_verb, verb_human):
-            verb_feature[idx] += v
-
-        for i in range(117):
-            verb_feature[i] /= y_verb.count(i)
-
-        v_feature = verb_feature / verb_feature.norm(dim=-1, keepdim=True)
-        torch.save(v_feature, f'./verb_{args.dataset_file}.pth')
-        exit()
+        get_verb_representation_original(hoi_feature, obj_feature, verb_feature, args)
+        get_verb_representation_ours(hoi_feature, obj_feature, verb_feature, args)
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()

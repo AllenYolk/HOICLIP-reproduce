@@ -36,14 +36,16 @@ class GEN_VLKT(nn.Module):
 
 
     def forward(self, samples: NestedTensor, is_training=True, clip_input=None, targets=None):
+        """Return unnormalized features!!!
+        """
         for t in targets:
             if t['obj_boxes'].shape[0] == 0 or t['human_img'].shape[0] == 0 or t['hoi_area_img'].shape[0] == 0:
                 continue
             # print(f"human_img: {t['human_img'].shape}")
+            hoi_feature = self.clip_model.encode_image(t['hoi_area_img'])[0]
             h_feature = self.clip_model.encode_image(t['human_img'])[0]
             o_feature = self.clip_model.encode_image(t['object_img'])[0]
-            hoi_feature = self.clip_model.encode_image(t['hoi_area_img'])[0]
-            verb_feature = hoi_feature.clone() * 2 - o_feature.clone() - h_feature.clone()
+            verb_feature = (hoi_feature.clone() * 2 - o_feature.clone() - h_feature.clone()) / 2
 
             # h_feature = h_feature / h_feature.norm(dim=1, keepdim=True)
             # o_feature = o_feature / o_feature.norm(dim=1, keepdim=True)
