@@ -56,8 +56,13 @@ class GEN(nn.Module):
                                                                clip_interaction_decoder_norm,
                                                                return_intermediate=return_intermediate_dec)
         self.inter_guided_embedd = nn.Embedding(num_queries, clip_dim)
-        self.queries2spacial_proj = nn.Linear(d_model, clip_dim)
-        self.queries2spacial_proj_norm = LayerNorm(clip_dim)
+        # HOICLIP's original implementation: mean, and MLP
+        # self.queries2spacial_proj = nn.Linear(d_model, clip_dim)
+        # self.queries2spacial_proj_norm = LayerNorm(clip_dim)
+        # Our implementation: sparse MLP
+        self.queries2special_vertial_proj = nn.Linear(2, 2)
+        self.queries2special_horizontal_proj = nn.Linear(d_model, clip_dim)
+        self.queries2special_proj_norm = LayerNorm(clip_dim)
 
         self.obj_class_fc = nn.Linear(d_model, clip_dim)
         self.obj_class_ln = LayerNorm(clip_dim)
@@ -111,10 +116,18 @@ class GEN(nn.Module):
 
         # h_hs_detached = h_hs.detach()
 
-        inter_hs = (h_hs + o_hs) / 2.0
-        inter_hs = self.queries2spacial_proj(inter_hs[-1])
-        inter_hs = self.queries2spacial_proj_norm(inter_hs)
-        # inter_hs = inter_hs + self.inter_guided_embedd.weight.unsqueeze(0).repeat(bs, 1, 1)
+        # HOICLIP's original implementation: mean, and MLP
+        # inter_hs = (h_hs + o_hs) / 2.0
+        # inter_hs = self.queries2spacial_proj(inter_hs[-1])
+        # inter_hs = self.queries2spacial_proj_norm(inter_hs)
+
+        # Our implementation: sparse MLP
+        e = torch.cat((h_hs[-1].unsqueeze(-1), o_hs[-1].unsqueeze(-1)), dim=-1)
+        e = self.queries2special_vertial_proj(e)
+        e = e.transpose(-2, -1)
+        e = self.queries2special_horizontal_proj(e)
+        inter_hs = e.sum(dim=-2)
+        inter_hs = self.queries2special_proj_norm(inter_hs)
 
         dtype = inter_hs.dtype
 
