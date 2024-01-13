@@ -266,9 +266,10 @@ def evaluate_hoi(
 
         best_performance_1 = 0
         clip_hoi_score_sorted_idx = cls_scores.sort(descending=True).indices
+        topk_range = [0, 5, 10, 15, 20, 25] if args.dataset_file == 'vcoco' else [10,]
         for a in [1]:
             for co in [1.0]:
-                for topk in [0, 5, 10, 15, 20, 25]:
+                for topk in topk_range:
                     print(f'current at topk: {topk} as: {a}')
                     test_pred = copy.deepcopy(preds)
                     clip_hoi_score = cls_scores.clone().to(device)
