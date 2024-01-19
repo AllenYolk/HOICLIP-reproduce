@@ -207,6 +207,8 @@ def get_args_parser():
     # zero shot enhancement
     parser.add_argument('--training_free_enhancement_path', default='', type=str)
 
+    parser.add_argument("--our_model", action="store_true")
+
     return parser
 
 

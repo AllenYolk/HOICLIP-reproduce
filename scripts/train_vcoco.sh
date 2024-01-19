@@ -36,6 +36,6 @@ python -m torch.distributed.launch \
         --resume ${EXP_DIR}/checkpoint_last.pth \
         --verb_pth ./tmp/vcoco_verb.pth \
         --verb_weight 0.1 \
-        --training_free_enhancement_path \
-        ./training_free_ehnahcement/
+        # --training_free_enhancement_path \
+        # ./training_free_ehnahcement/
 sleep 120

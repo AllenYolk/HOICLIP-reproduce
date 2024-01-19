@@ -7,7 +7,7 @@ from util.misc import (NestedTensor, nested_tensor_from_tensor_list,
                        accuracy, get_world_size,
                        is_dist_avail_and_initialized)
 import numpy as np
-import clip
+import ModifiedCLIP as clip
 from datasets.hico_text_label import hico_text_label, hico_obj_text_label, hico_unseen_index
 from datasets.vcoco_text_label import vcoco_hoi_text_label, vcoco_obj_text_label
 from datasets.static_hico import HOI_IDX_TO_ACT_IDX
@@ -42,6 +42,8 @@ class GEN_VLKT(nn.Module):
             if t['obj_boxes'].shape[0] == 0 or t['human_img'].shape[0] == 0 or t['hoi_area_img'].shape[0] == 0:
                 continue
             # print(f"human_img: {t['human_img'].shape}")
+            # print(f"hoi_area_img: {t['hoi_area_img'].shape}")
+            # print(f"object_img: {t['object_img'].shape}")
             hoi_feature = self.clip_model.encode_image(t['hoi_area_img'])[0]
             h_feature = self.clip_model.encode_image(t['human_img'])[0]
             o_feature = self.clip_model.encode_image(t['object_img'])[0]
@@ -55,6 +57,7 @@ class GEN_VLKT(nn.Module):
 
             obj_label = t['obj_cls']
             hoi_label = t['hoi_cls'] - 1
+            # print(obj_label.shape, hoi_label.shape, o_feature.shape, hoi_feature.shape)
             if obj_label.shape[0] != o_feature.shape[0] or hoi_label.shape[0] != hoi_feature.shape[0]:
                 raise ValueError
 

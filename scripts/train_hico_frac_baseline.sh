@@ -1,6 +1,6 @@
 ulimit -n 4096
 set -x
-EXP_DIR=exps/hico_5%/hoiclip
+EXP_DIR=exps/hico_5%/hoiclip_baseline
 
 swapon --show
 free -h
@@ -28,7 +28,7 @@ python -m torch.distributed.launch \
         --with_clip_label \
         --with_obj_clip_label \
         --gradient_accumulation_steps 1 \
-        --num_workers 8 \
+        --num_workers 1 \
         --opt_sched "multiStep" \
         --dataset_root GEN \
         --model_name HOICLIP \
@@ -36,6 +36,5 @@ python -m torch.distributed.launch \
         --frac 0.05 \
         --resume ${EXP_DIR}/checkpoint_last.pth \
         --verb_pth ./tmp/verb.pth \
-        --training_free_enhancement_path \
-        ./training_free_ehnahcement/
-sleep 120
+        # --training_free_enhancement_path \
+        # ./training_free_ehnahcement/

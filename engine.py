@@ -25,6 +25,7 @@ def get_verb_representation_original(hoi_feature, obj_feature, verb_feature, arg
 
     Argument `verb_feature` is useless, just for compatibility. 
     """
+    print("Generating verb representation... (original)")
     from datasets.static_hico import HOI_IDX_TO_ACT_IDX, HOI_IDX_TO_OBJ_IDX
     hoi_feature = hoi_feature / hoi_feature.norm(dim=1, keepdim=True)
     obj_feature = obj_feature / obj_feature.norm(dim=1, keepdim=True)
@@ -39,7 +40,7 @@ def get_verb_representation_original(hoi_feature, obj_feature, verb_feature, arg
     obj_human = torch.stack(obj_human) # each HOI's object feature
     verb_human = hoi_feature - obj_human # each HOI: HOI feature - object feature
 
-    verb_feature = torch.zeros(117, 512) # each verb
+    verb_feature = torch.zeros(117, 512).to(hoi_feature.device) # each verb
     for idx, v in zip(y_verb, verb_human):
         verb_feature[idx] += v # sum of all (HOI feature - object feature)
 
@@ -48,6 +49,7 @@ def get_verb_representation_original(hoi_feature, obj_feature, verb_feature, arg
 
     v_feature = verb_feature / verb_feature.norm(dim=-1, keepdim=True) # normalize
     torch.save(v_feature, f'./verb_{args.dataset_file}.pth')
+    print("Verb representation (original) saved to ./verb_{}.pth".format(args.dataset_file))
     exit()
 
 
@@ -59,8 +61,10 @@ def get_verb_representation_ours(hoi_feature, obj_feature, verb_feature, args):
     See the `GEN_VLKT` class in models/generate_image_feature/generate_verb.py 
     for more details.
     """
+    print("Generating verb representation... (ours)")
     v_feature = verb_feature / verb_feature.norm(dim=-1, keepdim=True) # normalize
-    torch.save(v_feature, f'./verb_{args.dataset_file}.pth')
+    torch.save(v_feature, f'./verb_{args.dataset_file}_ours.pth')
+    print("Verb representation (ours) saved to ./verb_{}_ours.pth".format(args.dataset_file))
     exit()
 
 
@@ -174,7 +178,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
     # trick for generate verb
     if no_training:
-        get_verb_representation_original(hoi_feature, obj_feature, verb_feature, args)
+        # get_verb_representation_original(hoi_feature, obj_feature, verb_feature, args)
         get_verb_representation_ours(hoi_feature, obj_feature, verb_feature, args)
 
     # gather the stats from all processes

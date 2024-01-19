@@ -21,10 +21,14 @@ class LayerNorm(nn.LayerNorm):
 
 class GEN(nn.Module):
 
-    def __init__(self, d_model=512, nhead=8, num_encoder_layers=6,
-                 num_dec_layers=3, dim_feedforward=2048, dropout=0.1,
-                 activation="relu", normalize_before=False, num_inter_dec_layrs=3,
-                 return_intermediate_dec=False, num_queries=64, clip_dim=768, enable_cp=False):
+    def __init__(
+        self, d_model=512, nhead=8, num_encoder_layers=6,
+        num_dec_layers=3, dim_feedforward=2048, dropout=0.1,
+        activation="relu", normalize_before=False, num_inter_dec_layrs=3,
+        return_intermediate_dec=False, num_queries=64, clip_dim=768, enable_cp=False,
+        our_model=False,
+    
+    ):
         super().__init__()
 
         encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,
@@ -56,13 +60,18 @@ class GEN(nn.Module):
                                                                clip_interaction_decoder_norm,
                                                                return_intermediate=return_intermediate_dec)
         self.inter_guided_embedd = nn.Embedding(num_queries, clip_dim)
-        # HOICLIP's original implementation: mean, and MLP
-        # self.queries2spacial_proj = nn.Linear(d_model, clip_dim)
-        # self.queries2spacial_proj_norm = LayerNorm(clip_dim)
-        # Our implementation: sparse MLP
-        self.queries2special_vertial_proj = nn.Linear(2, 2)
-        self.queries2special_horizontal_proj = nn.Linear(d_model, clip_dim)
-        self.queries2special_proj_norm = LayerNorm(clip_dim)
+
+        self.our_model = our_model
+        if our_model:
+            # Our implementation: sparse MLP
+            self.queries2special_vertial_proj = nn.Linear(2, 2)
+            self.queries2special_horizontal_proj = nn.Linear(d_model, clip_dim)
+            self.queries2special_proj_norm = LayerNorm(clip_dim)
+        else:
+            # HOICLIP's original implementation: mean, and MLP
+            self.queries2spacial_proj = nn.Linear(d_model, clip_dim)
+            self.queries2spacial_proj_norm = LayerNorm(clip_dim)
+        
 
         self.obj_class_fc = nn.Linear(d_model, clip_dim)
         self.obj_class_ln = LayerNorm(clip_dim)
@@ -116,18 +125,21 @@ class GEN(nn.Module):
 
         # h_hs_detached = h_hs.detach()
 
-        # HOICLIP's original implementation: mean, and MLP
-        # inter_hs = (h_hs + o_hs) / 2.0
-        # inter_hs = self.queries2spacial_proj(inter_hs[-1])
-        # inter_hs = self.queries2spacial_proj_norm(inter_hs)
+        if self.our_model:
+            # Our implementation: sparse MLP
+            e = torch.cat((h_hs[-1].unsqueeze(-1), o_hs[-1].unsqueeze(-1)), dim=-1)
+            e = self.queries2special_vertial_proj(e)
+            e = e.transpose(-2, -1)
+            e = self.queries2special_horizontal_proj(e)
+            inter_hs = e.sum(dim=-2)
+            inter_hs = self.queries2special_proj_norm(inter_hs)
+        else:
+            # HOICLIP's original implementation: mean, and MLP
+            inter_hs = (h_hs + o_hs) / 2.0
+            inter_hs = self.queries2spacial_proj(inter_hs[-1])
+            inter_hs = self.queries2spacial_proj_norm(inter_hs)
 
-        # Our implementation: sparse MLP
-        e = torch.cat((h_hs[-1].unsqueeze(-1), o_hs[-1].unsqueeze(-1)), dim=-1)
-        e = self.queries2special_vertial_proj(e)
-        e = e.transpose(-2, -1)
-        e = self.queries2special_horizontal_proj(e)
-        inter_hs = e.sum(dim=-2)
-        inter_hs = self.queries2special_proj_norm(inter_hs)
+        
 
         dtype = inter_hs.dtype
 
@@ -596,7 +608,8 @@ def build_gen(args):
         normalize_before=args.pre_norm,
         return_intermediate_dec=True,
         num_queries=args.num_queries,
-        num_inter_dec_layrs=args.inter_dec_layers
+        num_inter_dec_layrs=args.inter_dec_layers,
+        our_model=args.our_model,
     )
 
 
