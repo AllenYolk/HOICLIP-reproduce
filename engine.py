@@ -50,7 +50,6 @@ def get_verb_representation_original(hoi_feature, obj_feature, verb_feature, arg
     v_feature = verb_feature / verb_feature.norm(dim=-1, keepdim=True) # normalize
     torch.save(v_feature, f'./verb_{args.dataset_file}.pth')
     print("Verb representation (original) saved to ./verb_{}.pth".format(args.dataset_file))
-    exit()
 
 
 def get_verb_representation_ours(hoi_feature, obj_feature, verb_feature, args):
@@ -65,7 +64,6 @@ def get_verb_representation_ours(hoi_feature, obj_feature, verb_feature, args):
     v_feature = verb_feature / verb_feature.norm(dim=-1, keepdim=True) # normalize
     torch.save(v_feature, f'./verb_{args.dataset_file}_ours.pth')
     print("Verb representation (ours) saved to ./verb_{}_ours.pth".format(args.dataset_file))
-    exit()
 
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
@@ -178,7 +176,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
     # trick for generate verb
     if no_training:
-        # get_verb_representation_original(hoi_feature, obj_feature, verb_feature, args)
+        get_verb_representation_original(hoi_feature, obj_feature, verb_feature, args)
         get_verb_representation_ours(hoi_feature, obj_feature, verb_feature, args)
 
     # gather the stats from all processes

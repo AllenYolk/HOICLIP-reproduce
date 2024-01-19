@@ -1,18 +1,21 @@
-# HOICLIP: Efficient-Knowledge-Transfer-for-HOI-Detection-with-Visual-Linguistic-Model
+# HOICLIP-reproduce
 
-Code for our CVPR 2023
-paper "[HOICLIP: Efficient-Knowledge-Transfer-for-HOI-Detection-with-Visual-Linguistic-Model](https://arxiv.org/abs/2303.15786)"
-.
+The final project for Vision and Language 2023 @ PKU.
 
+Reproduction of the CVPR 2023 paper:"[HOICLIP: Efficient-Knowledge-Transfer-for-HOI-Detection-with-Visual-Linguistic-Model](https://arxiv.org/abs/2303.15786)".
+
+Reproduced by [Wei Xia](https://github.com/adventurexw) and [Yifan Huang](https://github.com/AllenYolk).
 Contributed by Shan Ning*, Longtian Qiu*, Yongfei Liu, Xuming He.
 
-![](paper_images/intro.png)
+For more details of the original paper, please refer to the [original repository](https://github.com/Artanic30/HOICLIP).
+
+![model](paper_images/intro.png)
 
 ## Installation
 
 Install the dependencies.
 
-```
+```shell
 pip install -r requirements.txt
 ```
 
@@ -30,7 +33,7 @@ For fractional data setting, we provide the
 annotations [here](https://drive.google.com/file/d/13O_uUv_17-Db9ghDqo4z2s3MZlfZJtgi/view?usp=sharing). After
 decompress, the files should be placed under `data/hico_20160224_det/annotations`.
 
-```
+```plaintext
 data
  └─ hico_20160224_det
      |─ annotations
@@ -51,7 +54,7 @@ generate the file `instances_vcoco_all_2014.json`. Next, download the prior file
 from [here](https://drive.google.com/drive/folders/10uuzvMUCVVv95-xAZg5KS94QXm7QXZW4). Place the files and make
 directories as follows.
 
-```
+```plaintext
 GEN-VLKT
  |─ data
  │   └─ v-coco
@@ -73,7 +76,7 @@ GEN-VLKT
 For our implementation, the annotation file have to be converted to the HOIA format. The conversion can be conducted as
 follows.
 
-```
+```shell
 PYTHONPATH=data/v-coco \
         python convert_vcoco_annotations.py \
         --load_path data/v-coco/data \
@@ -92,7 +95,7 @@ generated to `annotations` directory.
 Download the pretrained model of DETR detector for [ResNet50](https://dl.fbaipublicfiles.com/detr/detr-r50-e632da11.pth)
 , and put it to the `params` directory.
 
-```
+```shell
 python ./tools/convert_parameters.py \
         --load_path params/detr-r50-e632da11.pth \
         --save_path params/detr-r50-pre-2branch-hico.pth \
@@ -109,176 +112,69 @@ python ./tools/convert_parameters.py \
 
 After the preparation, you can start training with the following commands.
 
-### HICO-DET
+Here, we only list the commands for our reproduction and improvements.
+Please refer to the [original repository](https://github.com/Artanic30/HOICLIP) for a complete list of all the experiments.
 
-```
-# default setting
-sh ./scripts/train_hico.sh
-```
+### Generate our verb representations for HICO-Det
 
-### V-COCO
-
-```
-sh ./scripts/train_vcoco.sh
-```
-
-### Zero-shot
-
-```
-# rare first unseen combination setting
-sh ./scripts/train_hico_rf_uc.sh
-# non rare first unseen combination setting
-sh ./scripts/train_hico_nrf_uc.sh
-# unseen object setting
-sh ./scripts/train_hico_uo.sh
-# unseen verb setting
-sh ./scripts/train_hico_uv.sh
-```
-
-### Fractional data
-
-```
-# 50% fractional data
-sh ./scripts/train_hico_frac.sh
-```
-
-### Generate verb representation for Visual Semantic Arithmetic
-
-```
+```shell
 sh ./scripts/generate_verb.sh
 ```
 
-We provide the generated verb representation in `./tmp/verb.pth` for hico and `./tmp/vcoco_verb.pth` for vcoco.
+We provide the generated verb representation:
+
+* `./tmp/verb.pth` is the original verb representation for hico-det.
+* `./tmp/verb_hico_ours.pth` is our verb representation for hico-det.
+* `./tmp/vcoco_verb.pth` is for vcoco. It is provided by the authors of the original work, and cannot be generated manually.
+
+### Training V-COCO
+
+```shell
+sh ./scripts/train_vcoco.sh
+```
+
+### Training 5% HICO-DET
+
+```shell
+# default setting
+sh ./scripts/train_hico_frac_baseline.sh
+# with our improvement on verb representation
+sh ./scripts/train_hico_frac_our_verb.sh
+# with our improvement on Q_{inter}
+sh ./scripts/train_hico_frac_our_mdoel.sh
+```
 
 ## Evaluation
 
-### HICO-DET
+### Evaluating V-COCO
 
-You can conduct the evaluation with trained parameters for HICO-DET as follows.
-
-```
-python -m torch.distributed.launch \
-        --nproc_per_node=2 \
-        --use_env \
-        main.py \
-        --pretrained [path to your checkpoint] \
-        --dataset_file hico \
-        --hoi_path data/hico_20160224_det \
-        --num_obj_classes 80 \
-        --num_verb_classes 117 \
-        --backbone resnet50 \
-        --num_queries 64 \
-        --dec_layers 3 \
-        --eval \
-        --zero_shot_type default \
-        --with_clip_label \
-        --with_obj_clip_label \
-        --use_nms_filter
+```shell
+# default setting
+sh ./scripts/eval_vcoco.sh
 ```
 
-For the official evaluation (reported in paper), you need to covert the prediction file to an official prediction format
-following [this file](./tools/covert_annot_for_official_eval.py), and then
-follow [PPDM](https://github.com/YueLiao/PPDM) evaluation steps.
+### Evaluating HICO-DET
 
-[//]: # (### V-COCO)
-
-[//]: # ()
-[//]: # (Firstly, you need the add the following main function to the vsrl_eval.py in data/v-coco.)
-
-[//]: # ()
-[//]: # (```)
-
-[//]: # (if __name__ == '__main__':)
-
-[//]: # (  import sys)
-
-[//]: # ()
-[//]: # (  vsrl_annot_file = 'data/vcoco/vcoco_test.json')
-
-[//]: # (  coco_file = 'data/instances_vcoco_all_2014.json')
-
-[//]: # (  split_file = 'data/splits/vcoco_test.ids')
-
-[//]: # ()
-[//]: # (  vcocoeval = VCOCOeval&#40;vsrl_annot_file, coco_file, split_file&#41;)
-
-[//]: # ()
-[//]: # (  det_file = sys.argv[1])
-
-[//]: # (  vcocoeval._do_eval&#40;det_file, ovr_thresh=0.5&#41;)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (Next, for the official evaluation of V-COCO, a pickle file of detection results have to be generated. You can generate)
-
-[//]: # (the file with the following command. and then evaluate it as follows.)
-
-[//]: # ()
-[//]: # (```)
-
-[//]: # (python generate_vcoco_official.py \)
-
-[//]: # (        --param_path pretrained/VCOCO_GEN_VLKT_S.pth \)
-
-[//]: # (        --save_path vcoco.pickle \)
-
-[//]: # (        --hoi_path data/v-coco \)
-
-[//]: # (        --num_queries 64 \)
-
-[//]: # (        --dec_layers 3 \)
-
-[//]: # (        --use_nms_filter \)
-
-[//]: # (        --with_clip_label \)
-
-[//]: # (        --with_obj_clip_label)
-
-[//]: # ()
-[//]: # (cd data/v-coco)
-
-[//]: # (python vsrl_eval.py vcoco.pickle)
-
-[//]: # ()
-[//]: # (```)
-
-### Zero-shot
-
-```
-python -m torch.distributed.launch \
-        --nproc_per_node=8 \
-        --use_env \
-        main.py \
-        --pretrained [path to your checkpoint] \
-        --dataset_file hico \
-        --hoi_path data/hico_20160224_det \
-        --num_obj_classes 80 \
-        --num_verb_classes 117 \
-        --backbone resnet50 \
-        --num_queries 64 \
-        --dec_layers 3 \
-        --eval \
-        --with_clip_label \
-        --with_obj_clip_label \
-        --use_nms_filter \
-        --zero_shot_type rare_first \
-        --del_unseen
+```shell
+# default setting
+sh ./scripts/eval_hico_frac_baseline.sh
+# with our improvement on verb representation
+sh ./scripts/eval_hico_frac_our_verb.sh
+# with our improvement on Q_{inter}
+sh ./scripts/eval_hico_frac_our_mdoel.sh
 ```
 
 ### Training Free Enhancement
+
 The `Training Free Enhancement` is used when args.training_free_enhancement_path is not empty.
 The results are placed in args.output_dir/args.training_free_enhancement_path.
-You may refer to codes in `engine.py:202`.
-By default, we set the topk to [10, 20, 30, 40, 50].
-
-## Visualization
-
-Script for visualization is in `scripts/visualization_hico.sh`
-You may need to adjust the file paths with TODO comment in `visualization_hoiclip/gen_vlkt.py` and currently the code
-visualize fail cases in some zero-shot setting. For detail information, you may refer to the comments.
+By default, we set the topk to `[10]` for HICO-Det, and `[10, 20]` for V-COCO.
 
 ## Regular HOI Detection Results
+
+Here are the results in the original paper.
+
+For results of our reproduction, please read `report.pdf`.
 
 ### HICO-DET
 
@@ -330,20 +226,6 @@ Please consider citing our paper if it helps your research.
 
 ## Acknowledge
 
-Codes are built from [GEN-VLKT](https://github.com/YueLiao/gen-vlkt), [PPDM](https://github.com/YueLiao/PPDM)
+Codes are built from [HOICLIP](https://github.com/Artanic30/HOICLIP), [GEN-VLKT](https://github.com/YueLiao/gen-vlkt), [PPDM](https://github.com/YueLiao/PPDM)
 , [DETR](https://github.com/facebookresearch/detr), [QPIC](https://github.com/hitachi-rd-cv/qpic)
 and [CDN](https://github.com/YueLiao/CDN). We thank them for their contributions.
-
-# Release Schedule
-
-- [x] Update raw codes(2023/4/14)
-- [x] Update readme(2023/7/26)
-    - [x] Data(2023/7/26)
-    - [x] Scripts(2023/7/26)
-    - [x] Performance table(2023/7/26)
-    - [x] Others(2023/7/26)
-- [x] Release trained checkpoints(2023/7/26)
-    - [x] Default settings(2023/7/26)
-    - [x] Zero-shot settings(2023/7/26)
-    - [x] Fractional settings(2023/7/26)
-- [x] Clean up codes(2023/7/26)
